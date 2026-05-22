@@ -605,3 +605,56 @@ export const listUserLoadingApi = async (payload, signal) => {
         throw new Error(`${errorMessage}`);
     }
 };
+
+// ----- User Management API -----
+export const viewUserManagementApi = async (payload, signal) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/UserManagement/View`, payload, {
+            signal,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data;
+    } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || "Lỗi không xác định";
+        throw new Error(`${errorMessage}`);
+    }
+};
+
+export const dmlUserManagementApi = async (payload, signal) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/UserManagement/DML`, payload, {
+            signal,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data;
+    } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || "Lỗi không xác định";
+        throw new Error(`${errorMessage}`);
+    }
+};
+
+export const resetPasswordUserManagementApi = async (payload, signal) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/UserManagement/ResetPassword`, payload, {
+            signal,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data;
+    } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || "Lỗi không xác định";
+        throw new Error(`${errorMessage}`);
+    }
+};
+
+export const toggleActiveUserManagementApi = async (payload, signal) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/UserManagement/ToggleActive`, payload, {
+            signal,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.data;
+    } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || "Lỗi không xác định";
+        throw new Error(`${errorMessage}`);
+    }
+};

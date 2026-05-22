@@ -41,9 +41,15 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="role_id" label="Vai trò" width="120">
+      <el-table-column label="Phòng ban" min-width="180">
         <template #default="{ row }">
-          <el-tag :type="row.role_id === 1 ? 'danger' : 'info'">
+          <span>{{ getDeptName(row.department_id) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="role_id" label="Vai trò" width="150">
+        <template #default="{ row }">
+          <el-tag :type="getRoleTagType(row.role_id)">
             {{ getRoleName(row.role_id) }}
           </el-tag>
         </template>
@@ -147,11 +153,23 @@ export default {
       );
     });
 
-    // Helper to change role_id to text
-    const getRoleName = (roleId) => {
-      const roles = { 255: "Admin", 127: "Managger" };
-      return roles[roleId] || "Unknown";
+    const ROLE_NAMES = { 255: "Admin", 127: "Manager", 63: "Warehouse Manager", 1: "Employee" };
+    const ROLE_TAG_TYPES = { 255: "danger", 127: "warning", 63: "info", 1: "" };
+    const DEPT_NAMES = {
+      1000: "Ban GĐ HCM", 1001: "TV Công nghệ HCM", 1002: "NS&HC HCM", 1003: "Mua hàng HCM",
+      1004: "Tài chính HCM", 1005: "TC&KH HCM", 1006: "Marketing HCM", 1007: "KD Điện-TĐ HCM",
+      1008: "Account Mgr HCM", 1009: "KD Hệ thống Điện HCM", 1010: "KD Tự động HCM",
+      1011: "KD PIS HCM", 1012: "KD SP Công nghiệp HCM", 1013: "ESTEC Digital HCM",
+      1014: "KD Digital HCM", 1015: "Thực hiện DA HCM", 1016: "RnD HCM",
+      1017: "Thiết kế & Thi công HCM", 1018: "Tự động hóa HCM", 1019: "Điện HCM",
+      1020: "Đo lường HCM", 1021: "Dịch vụ CN HCM", 1022: "KTV M&E HCM", 1023: "Back Office HCM",
+      2000: "Ban GĐ ĐN", 2001: "NS&HC ĐN", 2002: "Tài chính ĐN", 2003: "Kinh doanh ĐN",
+      2004: "Tự động hóa ĐN", 2005: "Điện ĐN", 2006: "Đo lường ĐN",
+      2007: "Sửa chữa M&E ĐN", 2008: "ESTEC Digital ĐN", 2009: "TTĐT ĐN", 2010: "Back Office ĐN",
     };
+    const getRoleName = (roleId) => ROLE_NAMES[roleId] || "Unknown";
+    const getRoleTagType = (roleId) => ROLE_TAG_TYPES[roleId] || "";
+    const getDeptName = (deptId) => DEPT_NAMES[deptId] || (deptId ? String(deptId) : "—");
 
     const handleStatusChange = (row) => {
       emit("toggle-status", row);
@@ -184,6 +202,8 @@ export default {
       searchQuery,
       filteredData,
       getRoleName,
+      getRoleTagType,
+      getDeptName,
       handleStatusChange,
       confirmDelete,
     };

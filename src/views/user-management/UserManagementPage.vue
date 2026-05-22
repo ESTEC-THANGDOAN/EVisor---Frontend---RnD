@@ -1,164 +1,263 @@
 <template>
-    <div class="user-management-screen" style="padding: 20px;">
-        <h2>Quản lý Nhân sự</h2>
+  <div class="user-management-screen" style="padding: 20px">
+    <h2>Quản lý Nhân sự</h2>
 
-        <div style="margin-bottom: 20px;">
-            <el-button type="primary" :icon="Plus" @click="handleCreateUser">Thêm nhân sự mới</el-button>
-            <el-button :icon="Refresh" @click="fetchUsers">Làm mới dữ liệu</el-button>
-        </div>
-
-        <el-tabs v-model="activeTab" type="border-card" class="demo-tabs">
-            <el-tab-pane label="Tất cả nhân sự" name="all">
-                <UserListTable 
-                    :users="allUsers"
-                    :loading="isLoading"
-                    @view="handleViewUser"
-                    @edit="handleEditUser"
-                    @delete="handleDeleteUser"
-                    @toggle-status="handleToggleStatus"
-                />
-            </el-tab-pane>
-
-            <el-tab-pane
-                v-for="dept in departments"
-                :key="dept.id"
-                :label="dept.name"
-                :name="String(dept.id)"
-            >
-                <UserListTable 
-                    :users="getUserByDepartment(dept.id)"
-                    :loading="isLoading"
-                    @view="handleViewUser"
-                    @edit="handleEditUser"
-                    @delete="handleDeleteUser"
-                    @toggle-status="handleToggleStatus"
-                />
-            </el-tab-pane>
-        </el-tabs>
-
-        <el-dialog v-model="dialogVisible" :title="dialogType === 'view' ? 'Thông tin chi tiết nhân sự' : 'Chỉnh sửa thông tin nhân sự'">
-            <div v-if="selectedUser">
-                <p><strong>Họ tên:</strong>{{ selectedUser.full_name }}</p>
-                <p><strong>Email:</strong>{{ selectedUser.email }}</p>
-                <p><strong>Phòng ban:</strong>{{ getDepartmentName(selectedUser.department_id) }}</p>
-            </div>
-            <template #footer>
-                <el-button @click="dialogVisible = false">Đóng</el-button>
-                <el-button type="primary" v-if="dialogType === 'edit'" @click="dialogVisible = false">Lưu thay đổi</el-button>
-            </template>
-        </el-dialog>
+    <div style="margin-bottom: 20px">
+      <el-button type="primary" :icon="Plus" @click="handleCreateUser">Thêm nhân sự mới</el-button>
+      <el-button :icon="Refresh" @click="fetchUsers">Làm mới dữ liệu</el-button>
     </div>
+
+    <el-tabs v-model="activeTab" type="border-card">
+      <el-tab-pane label="Tất cả nhân sự" name="all">
+        <UserListTable
+          :users="allUsers"
+          :loading="isLoading"
+          @view="handleViewUser"
+          @edit="handleEditUser"
+          @delete="handleDeleteUser"
+          @toggle-status="handleToggleStatus"
+        />
+      </el-tab-pane>
+      <el-tab-pane label="Hồ Chí Minh" name="hcm">
+        <UserListTable
+          :users="hcmUsers"
+          :loading="isLoading"
+          @view="handleViewUser"
+          @edit="handleEditUser"
+          @delete="handleDeleteUser"
+          @toggle-status="handleToggleStatus"
+        />
+      </el-tab-pane>
+      <el-tab-pane label="Đà Nẵng" name="dn">
+        <UserListTable
+          :users="dnUsers"
+          :loading="isLoading"
+          @view="handleViewUser"
+          @edit="handleEditUser"
+          @delete="handleDeleteUser"
+          @toggle-status="handleToggleStatus"
+        />
+      </el-tab-pane>
+    </el-tabs>
+
+    <UserDetailDialog
+      :visible="detailDialogVisible"
+      :user="selectedUser"
+      @close="detailDialogVisible = false"
+      @edit="handleEditUser"
+    />
+
+    <UserFormDialog
+      :visible="formDialogVisible"
+      :mode="formMode"
+      :user-data="selectedUser"
+      :loading="formLoading"
+      @close="formDialogVisible = false"
+      @submit="handleFormSubmit"
+    />
+  </div>
 </template>
 
 <script>
 import { Plus, Refresh } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
-import { onMounted, ref } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { computed, onMounted, ref } from "vue";
 import UserListTable from "../../components/table/user_management/UserListTable.vue";
+import { useAuthStore } from "../../stores/auth";
+import {
+  dmlUserManagementApi,
+  resetPasswordUserManagementApi,
+  toggleActiveUserManagementApi,
+  viewUserManagementApi,
+} from "../../services/auth.service";
+import UserDetailDialog from "./UserDetailDialog.vue";
+import UserFormDialog from "./UserFormDialog.vue";
 
 export default {
   name: "UserManagementPage",
-  components: {
-    Plus,
-    Refresh,
-    UserListTable,
-  },
+  components: { UserListTable, UserDetailDialog, UserFormDialog, Plus, Refresh },
   setup() {
-    const activeTab = ref("all");
+    const authStore = useAuthStore();
+    const owner = computed(() => authStore.user?.id);
+
     const isLoading = ref(false);
     const allUsers = ref([]);
-    const dialogVisible = ref(false);
-    const selectedUser = ref(null);
-    const dialogType = ref("view");
+    const activeTab = ref("all");
 
-    // Department list
-    const departments = [
-      { id: "0001", name: "Ban Giám Đốc" },
-      { id: "0002", name: "Phòng Kỹ Thuật" },
-      { id: "0003", name: "Phòng Nhân Sự" },
-      { id: "0004", name: "Phòng Kinh Doanh" },
-    ];
+    const hcmUsers = computed(() => allUsers.value.filter((u) => u.department_id >= 1000 && u.department_id <= 1023));
+    const dnUsers = computed(() => allUsers.value.filter((u) => u.department_id >= 2000 && u.department_id <= 2010));
+
+    // Detail dialog
+    const detailDialogVisible = ref(false);
+    const selectedUser = ref(null);
+
+    // Form dialog (create / edit)
+    const formDialogVisible = ref(false);
+    const formMode = ref("create");
+    const formLoading = ref(false);
+
     const fetchUsers = async () => {
       isLoading.value = true;
-      setTimeout(() => {
-        allUsers.value = [
-          {
-            user_id: "00003",
-            full_name: "John Doe",
-            username: "Jdoe",
-            phone_number: "01234556",
-            email: "john.doe@test.com",
-            avatar: null,
-            role_id: 1,
-            department_id: "0003", // Phòng Nhân sự
-            is_active: false,
-          },
-          {
-            user_id: "00004",
-            full_name: "Alice Smith",
-            username: "Asmith",
-            phone_number: "09876543",
-            email: "alice@test.com",
-            avatar: null,
-            role_id: 2,
-            department_id: "0002", // Phòng Kỹ thuật
-            is_active: true,
-          },
-          {
-            user_id: "00005",
-            full_name: "Tran Van B",
-            username: "Btran",
-            phone_number: "09123123",
-            email: "btran@test.com",
-            avatar: null,
-            role_id: 3,
-            department_id: "0002", // Phòng Kỹ thuật
-            is_active: true,
-          },
-        ];
+      try {
+        const payload = {
+          request_id: "evisor-" + Date.now(),
+          owner: owner.value,
+        };
+        const res = await viewUserManagementApi(payload);
+        if (res.status === "success") {
+          allUsers.value = res.data;
+        } else {
+          ElMessage.error(res.message || "Không thể tải danh sách nhân sự.");
+        }
+      } catch (e) {
+        ElMessage.error("Lỗi kết nối: " + e.message);
+      } finally {
         isLoading.value = false;
-      }, 500);
-    };
-
-    const getUserByDepartment = (deptId) => {
-      return allUsers.value.filter((user) => user.department_id === deptId);
-    };
-
-    const getDepartmentName = (deptId) => {
-      const dept = departments.find((d) => d.id === deptId);
-      return dept ? dept.name : deptId;
+      }
     };
 
     const handleCreateUser = () => {
-      ElMessage.info("Mở formtheem mới nhân sự.");
+      selectedUser.value = null;
+      formMode.value = "create";
+      formDialogVisible.value = true;
     };
 
     const handleViewUser = (user) => {
       selectedUser.value = user;
-      dialogType.value = "view";
-      dialogVisible.value = true;
+      detailDialogVisible.value = true;
     };
 
     const handleEditUser = (user) => {
-      selectedUser.value = { ...user }; // Clone object to avoid editing directly into the table without saving
-      dialogType.value = "edit";
-      dialogVisible.value = true;
+      detailDialogVisible.value = false;
+      selectedUser.value = { ...user };
+      formMode.value = "edit";
+      formDialogVisible.value = true;
     };
 
-    const handleDeleteUser = (user) => {
-      // Gọi API xóa user ở đây
-      allUsers.value = allUsers.value.filter((u) => u.user_id !== user.user_id);
-      ElMessage.success(`Đã xóa nhân sự ${user.full_name}`);
+    const handleDeleteUser = async (user) => {
+      try {
+        const payload = {
+          request_id: "evisor-" + Date.now(),
+          owner: owner.value,
+          dml_action: "delete",
+          form: { user_id: user.user_id },
+        };
+        const res = await dmlUserManagementApi(payload);
+        if (res.status === "success") {
+          ElMessage.success(res.message || "Xóa nhân sự thành công!");
+          await fetchUsers();
+        } else {
+          ElMessage.error(res.message || "Xóa thất bại.");
+        }
+      } catch (e) {
+        ElMessage.error("Lỗi kết nối: " + e.message);
+      }
     };
 
-    const handleToggleStatus = (user) => {
-      // Gọi API active/deactive user
-      // user.is_active đã được v-model cập nhật ở con, ở đây ta chỉ cần gọi API sync lại DB
-      console.log(`Calling API update status for ${user.username} to ${user.is_active}`);
+    const handleToggleStatus = async (user) => {
+      try {
+        const payload = {
+          request_id: "evisor-" + Date.now(),
+          owner: owner.value,
+          user_id: user.user_id,
+        };
+        const res = await toggleActiveUserManagementApi(payload);
+        if (res.status === "success") {
+          ElMessage.success(res.message || "Cập nhật trạng thái thành công!");
+          await fetchUsers();
+        } else {
+          ElMessage.error(res.message || "Cập nhật thất bại.");
+          // Revert switch state by refreshing data
+          await fetchUsers();
+        }
+      } catch (e) {
+        ElMessage.error("Lỗi kết nối: " + e.message);
+        await fetchUsers();
+      }
     };
 
-    onMounted(() =>{
-        fetchUsers();
+    const handleFormSubmit = async (formData) => {
+      formLoading.value = true;
+      try {
+        if (formData.mode === "create") {
+          const payload = {
+            request_id: "evisor-" + Date.now(),
+            owner: owner.value,
+            dml_action: "insert",
+            form: {
+              user_id: formData.user_id,
+              username: formData.username,
+              password: formData.password,
+              full_name: formData.full_name,
+              email: formData.email || null,
+              phone_number: formData.phone_number || null,
+              ext: formData.ext || null,
+              role_id: formData.role_id,
+              department_id: formData.department_id,
+            },
+          };
+          const res = await dmlUserManagementApi(payload);
+          if (res.status === "success") {
+            ElMessage.success(res.message || "Thêm nhân sự thành công!");
+            formDialogVisible.value = false;
+            await fetchUsers();
+          } else {
+            ElMessage.error(res.message || "Thêm thất bại.");
+          }
+        } else {
+          // Update profile
+          const updatePayload = {
+            request_id: "evisor-" + Date.now(),
+            owner: owner.value,
+            dml_action: "update",
+            form: {
+              user_id: formData.user_id,
+              full_name: formData.full_name,
+              email: formData.email || null,
+              phone_number: formData.phone_number || null,
+              ext: formData.ext || null,
+              role_id: formData.role_id,
+              department_id: formData.department_id,
+            },
+          };
+          const res = await dmlUserManagementApi(updatePayload);
+          if (res.status !== "success") {
+            ElMessage.error(res.message || "Cập nhật thất bại.");
+            return;
+          }
+
+          // Reset password if new_password is provided
+          if (formData.new_password) {
+            const resetPayload = {
+              request_id: "evisor-" + Date.now(),
+              owner: owner.value,
+              user_id: formData.user_id,
+              new_password: formData.new_password,
+            };
+            const resetRes = await resetPasswordUserManagementApi(resetPayload);
+            if (resetRes.status !== "success") {
+              ElMessage.warning(
+                "Cập nhật thông tin thành công nhưng đặt lại mật khẩu thất bại: " + (resetRes.message || "")
+              );
+              formDialogVisible.value = false;
+              await fetchUsers();
+              return;
+            }
+          }
+
+          ElMessage.success("Cập nhật nhân sự thành công!");
+          formDialogVisible.value = false;
+          await fetchUsers();
+        }
+      } catch (e) {
+        ElMessage.error("Lỗi kết nối: " + e.message);
+      } finally {
+        formLoading.value = false;
+      }
+    };
+
+    onMounted(() => {
+      fetchUsers();
     });
 
     return {
@@ -167,26 +266,28 @@ export default {
       activeTab,
       isLoading,
       allUsers,
-      dialogVisible,
+      hcmUsers,
+      dnUsers,
+      detailDialogVisible,
+      formDialogVisible,
+      formMode,
+      formLoading,
       selectedUser,
-      dialogType,
-      departments,
       fetchUsers,
-      getUserByDepartment,
-      getDepartmentName,
       handleCreateUser,
       handleViewUser,
       handleEditUser,
       handleDeleteUser,
       handleToggleStatus,
+      handleFormSubmit,
     };
   },
 };
 </script>
 
-<style>
+<style scoped>
 .user-management-screen {
-    background-color: white;
-    height: 100%;
+  background-color: white;
+  height: 100%;
 }
 </style>

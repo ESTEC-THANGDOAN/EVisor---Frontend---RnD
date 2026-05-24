@@ -658,3 +658,45 @@ export const toggleActiveUserManagementApi = async (payload, signal) => {
         throw new Error(`${errorMessage}`);
     }
 };
+
+// ----- MMSX API -----
+export const mmsxViewApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/MMSX/View`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const mmsxDashboardApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/MMSX/Dashboard`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const mmsxDmlApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/MMSX/DML`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+
+// ----- QMSX API -----
+export const qmsxViewApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/QMSX/View`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const qmsxDashboardApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/QMSX/Dashboard`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const qmsxDmlApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/QMSX/DML`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+
+// ----- PMSX API -----
+export const pmsxViewApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/PMSX/View`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const pmsxDashboardApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/PMSX/Dashboard`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};
+export const pmsxDmlApi = async (payload) => {
+    const response = await axios.post(`${API_BASE_URL}/PMSX/DML`, payload, { headers: { 'Content-Type': 'application/json' } });
+    return response.data;
+};

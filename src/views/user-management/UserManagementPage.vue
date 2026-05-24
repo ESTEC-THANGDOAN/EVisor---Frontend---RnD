@@ -7,7 +7,7 @@
       <el-button :icon="Refresh" @click="fetchUsers">Làm mới dữ liệu</el-button>
     </div>
 
-    <el-tabs v-model="activeTab" type="border-card">
+    <el-tabs v-model="activeTab" type="border-card" lazy>
       <el-tab-pane label="Tất cả nhân sự" name="all">
         <UserListTable
           :users="allUsers"
@@ -288,6 +288,5 @@ export default {
 <style scoped>
 .user-management-screen {
   background-color: white;
-  height: 100%;
 }
 </style>

@@ -90,6 +90,7 @@ onMounted(() => {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
   overflow: hidden;
   transition: margin-left 0.3s ease;
   width: 100%;
@@ -105,10 +106,11 @@ onMounted(() => {
 }
 
 .content-and-footer {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: hidden;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .content-and-footer > :deep(.router-view) {

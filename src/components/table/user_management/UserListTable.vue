@@ -10,7 +10,7 @@
       />
     </div>
 
-    <el-table :data="filteredData" border stripe style="width: 100%" v-loading="loading">
+    <el-table :data="pagedData" border stripe style="width: 100%" v-loading="loading">
       <el-table-column prop="user_id" label="Mã NV" width="100" sortable />
       <el-table-column label="Họ tên" min-width="180">
         <template #default="{ row }">
@@ -104,10 +104,11 @@
     </el-table>
     <div style="margin-top: 20px; display: flex; justify-content: flex-end">
       <el-pagination
+        v-model:current-page="currentPage"
         background
-        layout="prev, pager, next"
+        layout="total, prev, pager, next"
         :total="filteredData.length"
-        :page-size="10"
+        :page-size="pageSize"
       />
     </div>
   </div>
@@ -116,7 +117,7 @@
 <script>
 import { Delete, Edit, Message, Phone, Search, View } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 export default {
   name: "UserListTable",
@@ -142,16 +143,47 @@ export default {
   emits: ["view", "edit", "delete", "toggle-status"],
   setup(props, { emit }) {
     const searchQuery = ref("");
-    // Filter search local
+    const currentPage = ref(1);
+    const pageSize = 15;
+    const sortKey = ref("");
+    const sortOrder = ref("");
+
     const filteredData = computed(() => {
-      if (!searchQuery.value) return props.users;
       const lowerQuery = searchQuery.value.toLowerCase();
-      return props.users.filter(
-        (user) =>
-          user.full_name.toLowerCase().includes(lowerQuery) ||
-          user.email.toLowerCase().includes(lowerQuery)
-      );
+      let list = lowerQuery
+        ? props.users.filter(
+            (user) =>
+              user.full_name.toLowerCase().includes(lowerQuery) ||
+              (user.email || "").toLowerCase().includes(lowerQuery) ||
+              (user.username || "").toLowerCase().includes(lowerQuery)
+          )
+        : [...props.users];
+
+      if (sortKey.value && sortOrder.value) {
+        list.sort((a, b) => {
+          const va = a[sortKey.value] ?? "";
+          const vb = b[sortKey.value] ?? "";
+          const cmp = String(va).localeCompare(String(vb), undefined, { numeric: true });
+          return sortOrder.value === "ascending" ? cmp : -cmp;
+        });
+      }
+      return list;
     });
+
+    const pagedData = computed(() => {
+      const start = (currentPage.value - 1) * pageSize;
+      return filteredData.value.slice(start, start + pageSize);
+    });
+
+    const handleSortChange = ({ prop, order }) => {
+      sortKey.value = prop || "";
+      sortOrder.value = order || "";
+      currentPage.value = 1;
+    };
+
+    // Reset về trang 1 khi search hoặc data prop thay đổi
+    watch(searchQuery, () => { currentPage.value = 1; });
+    watch(() => props.users, () => { currentPage.value = 1; });
 
     const ROLE_NAMES = { 255: "Admin", 127: "Manager", 63: "Warehouse Manager", 1: "Employee" };
     const ROLE_TAG_TYPES = { 255: "danger", 127: "warning", 63: "info", 1: "" };
@@ -172,8 +204,28 @@ export default {
     const getDeptName = (deptId) => DEPT_NAMES[deptId] || (deptId ? String(deptId) : "—");
 
     const handleStatusChange = (row) => {
-      emit("toggle-status", row);
-      ElMessage.success(`Đã cập nhập trạng thái của ${row.full_name}`);
+      if (!row.is_active) {
+        // Đang deactivate → cần xác nhận vì sẽ kick session
+        ElMessageBox.confirm(
+          `Vô hiệu hóa tài khoản "${row.full_name}" sẽ đăng xuất người dùng ngay lập tức. Tiếp tục?`,
+          "Xác nhận vô hiệu hóa",
+          {
+            confirmButtonText: "Vô hiệu hóa",
+            cancelButtonText: "Hủy",
+            type: "warning",
+            confirmButtonClass: "el-button--danger",
+          }
+        )
+          .then(() => {
+            emit("toggle-status", row);
+          })
+          .catch(() => {
+            row.is_active = true; // revert switch
+          });
+      } else {
+        // Đang activate → không cần confirm
+        emit("toggle-status", row);
+      }
     };
 
     const confirmDelete = (row) => {
@@ -200,7 +252,10 @@ export default {
       Edit,
       Delete,
       searchQuery,
+      currentPage,
+      pageSize,
       filteredData,
+      pagedData,
       getRoleName,
       getRoleTagType,
       getDeptName,
